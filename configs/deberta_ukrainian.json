@@ -3,7 +3,7 @@
     "model_type": "deberta",
     "config_name": "deberta_base_uk",
     "tokenizer_name": "deberta_base_uk",
-    "train_file": "valid_data.txt",
+    "train_file": "train_data",
     "validation_file": "valid_data.txt",
     "max_seq_length": 512,
     "do_train": true,
