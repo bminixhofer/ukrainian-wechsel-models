@@ -38,16 +38,18 @@ def main(args):
             yield dataset[i : i + batch_size]["text"]
 
     # train tokenizer
-    # target_tokenizer = AutoTokenizer.from_pretrained(
-    #     args.new_tokenizer_name
-    #     if args.new_tokenizer_name is not None
-    #     else args.model_name
-    # )
-    # target_tokenizer = target_tokenizer.train_new_from_iterator(
-    #     batch_iterator(), vocab_size=len(target_tokenizer)
-    # )
-    # target_tokenizer.save_pretrained(output_dir)
-    target_tokenizer = AutoTokenizer.from_pretrained(output_dir)
+    if (output_dir / "tokenizer.json").exists():
+        target_tokenizer = AutoTokenizer.from_pretrained(output_dir)
+    else:
+        target_tokenizer = AutoTokenizer.from_pretrained(
+            args.new_tokenizer_name
+            if args.new_tokenizer_name is not None
+            else args.model_name
+        )
+        target_tokenizer = target_tokenizer.train_new_from_iterator(
+            batch_iterator(), vocab_size=len(target_tokenizer)
+        )
+        target_tokenizer.save_pretrained(output_dir)
 
     source_tokenizer = AutoTokenizer.from_pretrained(
         args.model_name, add_prefix_space=False
@@ -70,6 +72,7 @@ def main(args):
         model.get_input_embeddings().weight.detach().numpy(),
     )
 
+    np.save(output_dir / "info.npy", info)
     model.get_input_embeddings().weight.data = torch.from_numpy(target_embeddings)
     model.save_pretrained(args.output_dir)
 

@@ -210,12 +210,23 @@ def main():
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
-    if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
+    if (len(sys.argv) == 2 and sys.argv[1].endswith(".json")) or (
+        len(sys.argv) == 4
+        and sys.argv[1].endswith(".json")
+        and sys.argv[2] == "--tpu_num_cores"
+    ):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+
+        training_args.output_dir = os.path.join(
+            training_args.output_dir, os.path.splitext(os.path.basename(sys.argv[1]))[0]
+        )
+
+        if len(sys.argv) == 4:
+            training_args.tpu_num_cores = int(sys.argv[3])
     else:
-        model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+        raise NotImplementedError()
 
     # Setup logging
     logging.basicConfig(
