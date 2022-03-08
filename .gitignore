@@ -1,0 +1,7 @@
+*.txt
+*.bin
+*.bz2
+train_data
+*_uk
+output
+text
