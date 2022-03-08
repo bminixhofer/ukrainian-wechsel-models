@@ -5,3 +5,4 @@ train_data
 *_uk
 output
 text
+wandb

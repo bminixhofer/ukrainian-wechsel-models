@@ -424,8 +424,7 @@ def main():
 
     if training_args.process_index == 0 and training_args.do_train and "wandb" in training_args.report_to:
         wandb.init(
-            entity="ukrainian-nlp",
-            project="main",
+            project="ukrainian-nlp",
             name=os.path.basename(training_args.output_dir),
         )
 
@@ -486,13 +485,6 @@ def main():
         trainer.save_metrics("eval", metrics)
 
     kwargs = {"finetuned_from": model_args.model_name_or_path, "tasks": "text-generation"}
-    if data_args.dataset_name is not None:
-        kwargs["dataset_tags"] = data_args.dataset_name
-        if data_args.dataset_config_name is not None:
-            kwargs["dataset_args"] = data_args.dataset_config_name
-            kwargs["dataset"] = f"{data_args.dataset_name} {data_args.dataset_config_name}"
-        else:
-            kwargs["dataset"] = data_args.dataset_name
 
     if training_args.push_to_hub:
         trainer.push_to_hub(**kwargs)
