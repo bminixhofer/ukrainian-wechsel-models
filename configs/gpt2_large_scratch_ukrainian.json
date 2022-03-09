@@ -24,5 +24,6 @@
     "adam_beta2": 0.98,
     "adam_epsilon": 1e-6,
     "preprocessing_num_workers": 96,
-    "dtype": "bfloat16"
+    "dtype": "bfloat16",
+    "adafactor": true
 }
