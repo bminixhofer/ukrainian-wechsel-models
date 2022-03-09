@@ -246,7 +246,7 @@ def main():
     # download the dataset.
     raw_datasets = {}
 
-    for (name, path) in [("train", data_args.train_file), ("validation", data_args.validation_file)]:
+    for (name, path) in [("train", data_args.train_file)]:
         if path.endswith(".txt"):
             raw_datasets[name] = datasets.Dataset.from_dict({"text": [open(path).read()], "id": [0]})
         else:
