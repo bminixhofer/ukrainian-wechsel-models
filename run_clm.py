@@ -196,9 +196,6 @@ def main():
     else:
         raise NotImplementedError()
 
-    # somehow not parsed correctly
-    training_args.do_eval = False
-
     # Setup logging
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
