@@ -6,3 +6,6 @@ train_data
 output
 text
 wandb
+checkpoint*
+__pycache__
+eval/preprocess/
