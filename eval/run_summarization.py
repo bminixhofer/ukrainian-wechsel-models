@@ -444,23 +444,24 @@ def main():
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
-    model = AutoModelForSeq2SeqLM.from_pretrained(
-        model_args.model_name_or_path,
-        from_tf=bool(".ckpt" in model_args.model_name_or_path),
-        config=config,
-        cache_dir=model_args.cache_dir,
-        revision=model_args.model_revision,
-        use_auth_token=True if model_args.use_auth_token else None,
-    )
-    # from gpt2forconditionalgeneration import GPT2ForConditionalGeneration
-
-    # config.decoder_start_token_id = tokenizer.eos_token_id
-    # tokenizer.pad_token = tokenizer.eos_token
-    # config.pad_token_id = tokenizer.pad_token_id
-
-    # model = GPT2ForConditionalGeneration.from_pretrained(
-    #     model_args.model_name_or_path, config=config
+    # model = AutoModelForSeq2SeqLM.from_pretrained(
+    #     model_args.model_name_or_path,
+    #     from_tf=bool(".ckpt" in model_args.model_name_or_path),
+    #     config=config,
+    #     cache_dir=model_args.cache_dir,
+    #     revision=model_args.model_revision,
+    #     use_auth_token=True if model_args.use_auth_token else None,
     # )
+    from gpt2forconditionalgeneration import GPT2ForConditionalGeneration
+
+    config.decoder_start_token_id = tokenizer.eos_token_id
+    config.is_encoder_decoder = True
+    tokenizer.pad_token = tokenizer.eos_token
+    config.pad_token_id = tokenizer.pad_token_id
+
+    model = GPT2ForConditionalGeneration.from_pretrained(
+        model_args.model_name_or_path, config=config
+    )
 
     model.resize_token_embeddings(len(tokenizer))
 
@@ -597,10 +598,23 @@ def main():
         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
         # padding in the loss.
         if padding == "max_length" and data_args.ignore_pad_token_for_loss:
-            labels["input_ids"] = [
-                [(l if l != tokenizer.pad_token_id else -100) for l in label]
-                for label in labels["input_ids"]
-            ]
+            label_input_ids = labels.pop("input_ids")
+
+            for input_ids in label_input_ids:
+                had_eos = False
+
+                for i, input_id in enumerate(input_ids):
+                    if input_id == tokenizer.pad_token_id:
+                        if (
+                            tokenizer.eos_token_id == tokenizer.pad_token_id
+                            and not had_eos
+                        ):
+                            had_eos = True
+                            continue
+
+                        input_ids[i] = -100
+
+            labels["input_ids"] = label_input_ids
 
         model_inputs["labels"] = labels["input_ids"]
         return model_inputs
@@ -694,8 +708,6 @@ def main():
             # Replace -100 in the labels as we can't decode them.
             labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
         decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
-
-        print(preds)
 
         # Some simple post-processing
         decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)

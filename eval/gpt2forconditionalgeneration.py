@@ -4,9 +4,17 @@ from torch import nn
 from transformers import GPT2LMHeadModel
 from transformers.modeling_outputs import Seq2SeqLMOutput
 from transformers.file_utils import is_torch_fx_proxy
-
+from transformers.modeling_outputs import ModelOutput
 
 class GPT2ForConditionalGeneration(GPT2LMHeadModel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.config.is_encoder_decoder = True
+
+    def generate(self, *args, **kwargs):
+        return super().generate(*args, **kwargs)
+
     # from T5ForConditialGeneration
     def _shift_right(self, input_ids):
         decoder_start_token_id = self.config.decoder_start_token_id
@@ -42,12 +50,43 @@ class GPT2ForConditionalGeneration(GPT2LMHeadModel):
 
         return shifted_input_ids
 
+    def get_encoder(self):
+        class IdentityEncoder:
+            def __call__(self, **kwargs):
+                return ModelOutput(
+                    encoder_input_ids=kwargs["input_ids"], 
+                    encoder_attention_mask=kwargs["attention_mask"], 
+                )
+
+        return IdentityEncoder()
+
+    def prepare_inputs_for_generation(
+        self,
+        input_ids,
+        past=None,
+        attention_mask=None,
+        encoder_outputs=None,
+        **kwargs
+    ):
+        if past is not None:
+            input_ids = input_ids[:, -1:]
+            encoder_outputs["encoder_input_ids"] = input_ids[:, :0]
+            encoder_outputs["encoder_attention_mask"] = input_ids[:, :0]
+
+        return {
+            "decoder_input_ids": input_ids,
+            "input_ids": encoder_outputs["encoder_input_ids"],
+            "attention_mask": encoder_outputs["encoder_attention_mask"],
+            "past_key_values": past,
+        }
+
     def forward(
         self,
         input_ids=None,
         attention_mask=None,
         decoder_input_ids=None,
         decoder_attention_mask=None,
+        past_key_values=None,
         labels=None,
         **kwargs
     ):
@@ -77,9 +116,7 @@ class GPT2ForConditionalGeneration(GPT2LMHeadModel):
             1,
         )
 
-        output = super().forward(
-            input_ids=input_ids, attention_mask=attention_mask, **kwargs
-        )
+        output = super().forward(input_ids=input_ids, attention_mask=attention_mask, past_key_values=past_key_values)
 
         lm_logits = output.logits[
             :, -(decoder_input_ids.shape[1] if decoder_input_ids is not None else 1) :
@@ -93,4 +130,5 @@ class GPT2ForConditionalGeneration(GPT2LMHeadModel):
         return Seq2SeqLMOutput(
             loss=loss,
             logits=lm_logits,
+            past_key_values=output.past_key_values,
         )
