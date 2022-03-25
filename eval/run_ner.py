@@ -641,7 +641,7 @@ def main():
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
 
-        sys.exit(
+        sys.exit()
 
     # Predict
     if training_args.do_predict:
