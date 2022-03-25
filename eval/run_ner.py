@@ -592,6 +592,16 @@ def main():
                 "accuracy": results["overall_accuracy"],
             }
 
+    if training_args.process_index == 0 and training_args.do_train:
+        wandb.init(
+            project="huggingface",
+        )
+
+        wandb.config.update(training_args)
+        wandb.config.update(model_args)
+        wandb.config.update(data_args)
+        wandb.save(__file__, policy="now")
+
     # Initialize our Trainer
     trainer = Trainer(
         model=model,
