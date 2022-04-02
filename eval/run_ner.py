@@ -231,6 +231,8 @@ class DataTrainingArguments:
                 ], "`validation_file` should be a csv or a json file."
         self.task_name = self.task_name.lower()
 
+class CustomTrainingArguments(TrainingArguments):
+    load_best_model_at_end: bool = True
 
 def main():
     # See all possible arguments in src/transformers/training_args.py
@@ -238,7 +240,7 @@ def main():
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
     parser = HfArgumentParser(
-        (ModelArguments, DataTrainingArguments, TrainingArguments)
+        (ModelArguments, DataTrainingArguments, CustomTrainingArguments)
     )
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
@@ -516,20 +518,20 @@ def main():
             )
 
     if training_args.do_eval:
-        if "test" not in raw_datasets:
-            raise ValueError("--do_eval requires a test dataset")
-        eval_dataset = raw_datasets["test"]
+        if "validation" not in raw_datasets:
+            raise ValueError("--do_eval requires a validation dataset")
+        eval_dataset = raw_datasets["validation"]
         if data_args.max_eval_samples is not None:
             eval_dataset = eval_dataset.select(range(data_args.max_eval_samples))
         with training_args.main_process_first(
-            desc="test dataset map pre-processing"
+            desc="validation dataset map pre-processing"
         ):
             eval_dataset = eval_dataset.map(
                 tokenize_and_align_labels,
                 batched=True,
                 num_proc=data_args.preprocessing_num_workers,
                 load_from_cache_file=not data_args.overwrite_cache,
-                desc="Running tokenizer on test dataset",
+                desc="Running tokenizer on validation dataset",
             )
 
     if training_args.do_predict:
@@ -648,10 +650,10 @@ def main():
         )
         metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
 
+        wandb.log(metrics)
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
 
-        sys.exit()
 
     # Predict
     if training_args.do_predict:
@@ -668,6 +670,7 @@ def main():
             for prediction, label in zip(predictions, labels)
         ]
 
+        wandb.log(metrics)
         trainer.log_metrics("predict", metrics)
         trainer.save_metrics("predict", metrics)
 
@@ -698,6 +701,9 @@ def main():
         trainer.push_to_hub(**kwargs)
     else:
         trainer.create_model_card(**kwargs)
+
+    sys.exit()
+    
 
 
 def _mp_fn(index):
